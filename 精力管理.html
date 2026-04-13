@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>精力管理</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Instrument+Serif:ital@0;1&display=swap');
+:root {
+  --bg:#F8F7F4; --card:#FFFFFF; --border:#E8E4DE; --border-dk:#D0CAC0;
+  --text:#1A1814; --dim:#9A948A; --mid:#5A5550;
+  --red:#C4522A; --red-d:rgba(196,82,42,0.08);
+  --green:#4A9B6A; --green-d:rgba(74,155,106,0.09);
+  --blue:#3A7FB5; --blue-d:rgba(58,127,181,0.09);
+  --gold:#B07A20; --gold-d:rgba(176,122,32,0.09);
+  --zh:rgba(196,82,42,0.06); --zm:rgba(74,155,106,0.06); --zl:rgba(58,127,181,0.06);
+  --r:14px; --rs:8px; --sh:0 1px 4px rgba(0,0,0,0.06),0 0 0 1px var(--border);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;max-width:430px;margin:0 auto;padding-bottom:120px;min-height:100vh}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(248,247,244,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:14px 18px 12px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-family:'Instrument Serif',serif;font-style:italic;font-size:20px}
+.date-row{display:flex;align-items:center;gap:8px}
+.nav-btn{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;padding:2px 4px;line-height:1}
+.date-pill{font-size:13px;font-weight:500;color:var(--mid)}
+
+/* notice banner */
+.notice{background:#FFF8E7;border:1px solid #E8D080;border-radius:var(--rs);padding:10px 14px;margin:12px 16px 0;font-size:11px;color:#7A6010;line-height:1.6;display:flex;gap:8px;align-items:flex-start}
+.notice-icon{flex-shrink:0;font-size:14px}
+
+/* week strip */
+.week-wrap{padding:10px 16px 0}
+.week-strip{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.week-strip::-webkit-scrollbar{display:none}
+.week-day{flex:1;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 2px}
+.week-dot{width:34px;height:34px;border-radius:50%;background:transparent;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--dim);transition:all .18s}
+.week-day.active .week-dot{background:var(--red);color:white;border-color:var(--red)}
+.week-day.today:not(.active) .week-dot{border-color:var(--red);color:var(--red)}
+.week-day.has-data:not(.active) .week-dot{border-color:var(--border-dk);color:var(--mid)}
+.week-wd{font-size:9px;color:var(--dim);letter-spacing:.05em}
+
+/* section */
+.sec{padding:0 16px;margin-top:18px}
+.sec-lbl{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;padding-left:2px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+
+/* chart */
+.chart-pad{padding:14px 14px 12px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.leg{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--dim)}
+.leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.chart-outer{position:relative;height:200px}
+.chart-y{position:absolute;left:0;top:0;bottom:28px;width:24px;display:flex;flex-direction:column;justify-content:space-between}
+.y-l{font-size:9px;color:var(--dim);text-align:right;line-height:1}
+.chart-plot{position:absolute;left:30px;right:0;top:0;bottom:28px}
+.chart-plot svg{width:100%;height:100%;overflow:visible}
+.chart-x{position:absolute;left:30px;right:0;bottom:0;height:26px;overflow:hidden}
+.x-inner{display:flex;height:100%;align-items:flex-end;padding-bottom:2px;overflow-x:auto;scrollbar-width:none}
+.x-inner::-webkit-scrollbar{display:none}
+.x-lbl{flex-shrink:0;font-size:9px;color:var(--dim);text-align:center;white-space:nowrap;min-width:36px}
+
+/* entry */
+.entry-area{border-top:1px solid var(--border);padding:10px 14px 12px}
+.entry-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.entry-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.add-btn{background:var(--red-d);border:1px solid rgba(196,82,42,.2);color:var(--red);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Noto Sans SC';transition:opacity .12s}
+.add-btn:active{opacity:.65}
+.entry-rows{display:flex;flex-direction:column;gap:6px}
+.erow{display:flex;align-items:center;gap:8px}
+.time-inp{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Noto Sans SC';font-size:12px;font-weight:500;border-radius:var(--rs);padding:7px 8px;outline:none;width:72px;text-align:center}
+.time-inp:focus{border-color:var(--red)}
+.score-wrap{display:flex;align-items:center;gap:4px;flex:1}
+.sc-btn{background:var(--bg);border:1px solid var(--border);color:var(--mid);width:28px;height:28px;border-radius:50%;font-size:16px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0}
+.sc-btn:active{background:var(--red);color:white;border-color:var(--red);transform:scale(.9)}
+.sc-badge{flex:1;text-align:center;font-size:15px;font-weight:700;min-width:28px}
+.sc-badge.empty{font-size:12px;color:var(--dim);font-weight:400}
+.sc-hi{color:var(--red)!important}.sc-mid{color:var(--green)!important}.sc-lo{color:var(--blue)!important}
+.del-btn{background:none;border:none;color:var(--dim);font-size:16px;cursor:pointer;padding:4px;opacity:.5}
+.del-btn:active{opacity:1;color:#B43C3C}
+
+/* insight */
+.insight{background:var(--red-d);border:1px solid rgba(196,82,42,.15);border-radius:var(--r);padding:11px 14px;font-size:12px;color:var(--mid);line-height:1.65;display:none;margin-top:10px}
+.insight.show{display:block}
+.insight strong{color:var(--red)}
+
+/* body blocks */
+.bb{padding:14px 16px}
+.bb+.bb{border-top:1px solid var(--border)}
+.bb-hdr{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.bb-icon{font-size:15px}.bb-name{font-size:12px;font-weight:600;color:var(--mid);letter-spacing:.03em}
+/* water */
+.w-top{display:flex;align-items:baseline;gap:3px;margin-bottom:6px}
+.w-val{font-family:'Instrument Serif',serif;font-size:30px;color:var(--blue);line-height:1}
+.w-unit{font-size:11px;color:var(--dim)}
+.w-tgt{font-size:10px;color:var(--dim);margin-left:auto}
+.w-bar-bg{background:var(--border);border-radius:3px;height:3px;margin-bottom:10px;overflow:hidden}
+.w-bar{height:100%;border-radius:3px;background:var(--blue);transition:width .4s cubic-bezier(.4,0,.2,1)}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chip{border-radius:20px;padding:5px 11px;font-size:11px;font-weight:500;cursor:pointer;font-family:'Noto Sans SC';transition:opacity .12s;border:1px solid transparent}
+.chip:active{opacity:.65}
+.c-bl{background:var(--blue-d);border-color:rgba(58,127,181,.18);color:var(--blue)}
+.c-go{background:var(--gold-d);border-color:rgba(176,122,32,.18);color:var(--gold)}
+.c-gr{background:var(--green-d);border-color:rgba(74,155,106,.18);color:var(--green)}
+.c-rd{background:rgba(180,60,60,.07);border-color:rgba(180,60,60,.18);color:#B43C3C}
+.irow{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.num-inp{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Noto Sans SC';font-size:13px;font-weight:500;border-radius:var(--rs);padding:7px 10px;outline:none;-moz-appearance:textfield;flex:1}
+.num-inp::-webkit-outer-spin-button,.num-inp::-webkit-inner-spin-button{-webkit-appearance:none}
+.num-inp:focus{border-color:var(--red)}
+.bb-note{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;font-family:'Noto Sans SC';font-size:12px;color:var(--mid);resize:none;outline:none;width:100%;line-height:1.65}
+.bb-note::placeholder{color:var(--border-dk)}
+/* dur */
+.dur-val{font-family:'Instrument Serif',serif;font-size:30px;line-height:1;margin-bottom:6px}
+.dur-val.gold{color:var(--gold)}.dur-val.green{color:var(--green)}
+/* weight */
+.wt-row{display:flex;align-items:baseline;gap:4px;margin-bottom:8px}
+.wt-val{font-family:'Instrument Serif',serif;font-size:30px;color:var(--text);line-height:1}
+.wt-unit{font-size:11px;color:var(--dim)}
+.wt-inp{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Noto Sans SC';font-size:14px;font-weight:600;border-radius:var(--rs);padding:8px 12px;outline:none;-moz-appearance:textfield;width:130px}
+.wt-inp::-webkit-outer-spin-button,.wt-inp::-webkit-inner-spin-button{-webkit-appearance:none}
+.wt-inp:focus{border-color:var(--red)}
+
+/* diet */
+.mb+.mb{border-top:1px solid var(--border)}
+.mb-hdr{display:flex;align-items:center;gap:6px;padding:12px 16px 0}
+.mb-emoji{font-size:14px}.mb-name{font-size:11px;font-weight:600;color:var(--mid);letter-spacing:.04em}
+.mb-note{background:transparent;border:none;font-family:'Noto Sans SC';font-size:13px;color:var(--mid);resize:none;outline:none;width:100%;line-height:1.7;padding:6px 16px 8px}
+.mb-note::placeholder{color:var(--border-dk)}
+.mb-foot{display:flex;align-items:center;gap:8px;padding:0 16px 12px}
+.kcal-lbl{font-size:11px;color:var(--dim);white-space:nowrap}
+.kcal-inp{background:var(--bg);border:1px solid var(--border);color:var(--gold);font-family:'Instrument Serif',serif;font-size:15px;text-align:right;border-radius:var(--rs);padding:5px 8px;outline:none;width:80px;-moz-appearance:textfield}
+.kcal-inp::-webkit-outer-spin-button,.kcal-inp::-webkit-inner-spin-button{-webkit-appearance:none}
+.kcal-inp:focus{border-color:var(--gold)}
+.kcal-unit{font-size:11px;color:var(--dim)}
+.cal-total{border-top:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.ct-lbl{font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.05em}
+.ct-val{font-family:'Instrument Serif',serif;font-size:24px;color:var(--red)}
+.ct-unit{font-size:11px;color:var(--dim);margin-left:3px}
+
+/* gen note */
+.gen-note{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px}
+.gen-note textarea{background:none;border:none;outline:none;font-family:'Noto Sans SC';font-size:13px;color:var(--mid);resize:none;width:100%;line-height:1.75}
+.gen-note textarea::placeholder{color:var(--border-dk)}
+
+/* export */
+.export-btn{width:100%;background:var(--card);border:1.5px dashed var(--border-dk);color:var(--mid);border-radius:var(--r);padding:13px;font-family:'Noto Sans SC';font-size:13px;font-weight:500;cursor:pointer;letter-spacing:.02em;transition:all .15s}
+.export-btn:active{background:var(--border)}
+
+/* save fab */
+.save-fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--red);color:white;border:none;border-radius:30px;padding:14px 40px;font-family:'Noto Sans SC';font-size:14px;font-weight:700;letter-spacing:.06em;cursor:pointer;box-shadow:0 4px 20px rgba(196,82,42,.35);transition:transform .12s;white-space:nowrap;z-index:50}
+.save-fab:active{transform:translateX(-50%) scale(.95)}
+.save-fab.saved{background:var(--green);box-shadow:0 4px 20px rgba(74,155,106,.3)}
+
+/* toast */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1A1814;color:#F8F7F4;padding:10px 20px;border-radius:20px;font-size:13px;font-family:'Noto Sans SC';z-index:999;white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">精力管理</div>
+  <div class="date-row">
+    <button class="nav-btn" onclick="changeDay(-1)">‹</button>
+    <div class="date-pill" id="datePill">—</div>
+    <button class="nav-btn" onclick="changeDay(1)">›</button>
+  </div>
+</div>
+
+<div class="notice">
+  <span class="notice-icon">💾</span>
+  <span>请将此文件保存到手机本地（文件App），每次从文件App打开，数据才会永久保留。</span>
+</div>
+
+<div class="week-wrap">
+  <div class="week-strip" id="weekStrip"></div>
+</div>
+
+<!-- 精力曲线 -->
+<div class="sec">
+  <div class="sec-lbl">精力曲线 · 0–10分</div>
+  <div class="card">
+    <div class="chart-pad">
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>高能 8–10</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>稳定 5–7</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>低能 1–4</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--gold)"></div>基准线</div>
+      </div>
+      <div class="chart-outer">
+        <div class="chart-y" id="chartY"></div>
+        <div class="chart-plot"><svg id="chartSvg"></svg></div>
+        <div class="chart-x"><div class="x-inner" id="chartX"></div></div>
+      </div>
+    </div>
+    <div class="entry-area">
+      <div class="entry-hdr">
+        <span class="entry-title">记录时间点</span>
+        <button class="add-btn" onclick="addPoint()">＋ 添加</button>
+      </div>
+      <div class="entry-rows" id="entryRows"></div>
+    </div>
+  </div>
+  <div class="insight" id="insight"></div>
+</div>
+
+<!-- 身体管理 -->
+<div class="sec">
+  <div class="sec-lbl">身体管理</div>
+  <div class="card">
+    <div class="bb">
+      <div class="bb-hdr"><span class="bb-icon">💧</span><span class="bb-name">喝水</span><span class="w-tgt">目标 2000 ml</span></div>
+      <div class="w-top"><div class="w-val" id="waterVal">0</div><span class="w-unit">ml</span></div>
+      <div class="w-bar-bg"><div class="w-bar" id="waterBar" style="width:0%"></div></div>
+      <div class="chip-row">
+        <span class="chip c-bl" onclick="addWater(150)">+150</span>
+        <span class="chip c-bl" onclick="addWater(200)">+200</span>
+        <span class="chip c-bl" onclick="addWater(250)">+250</span>
+        <span class="chip c-bl" onclick="addWater(350)">+350</span>
+        <span class="chip c-bl" onclick="addWater(500)">+500</span>
+      </div>
+      <div class="irow">
+        <input class="num-inp" type="number" id="waterCustom" placeholder="自定义 ml">
+        <span class="chip c-bl" onclick="addCustomWater()">加入</span>
+        <span class="chip c-rd" onclick="resetWater()">清零</span>
+      </div>
+      <textarea class="bb-note" id="waterNote" rows="2" placeholder="备注（咖啡、茶…）"></textarea>
+    </div>
+    <div class="bb">
+      <div class="bb-hdr"><span class="bb-icon">🧘</span><span class="bb-name">冥想</span></div>
+      <div class="dur-val gold" id="meditationVal">0<span style="font-family:'Noto Sans SC';font-size:12px;color:var(--dim);margin-left:3px">分钟</span></div>
+      <div class="chip-row">
+        <span class="chip c-go" onclick="addDur('meditation',5)">+5 min</span>
+        <span class="chip c-go" onclick="addDur('meditation',10)">+10 min</span>
+        <span class="chip c-go" onclick="addDur('meditation',20)">+20 min</span>
+      </div>
+      <div class="irow">
+        <input class="num-inp" type="number" id="meditationCustom" placeholder="分钟" oninput="setDur('meditation')">
+      </div>
+      <textarea class="bb-note" id="meditationNote" rows="2" placeholder="方式、感受…"></textarea>
+    </div>
+    <div class="bb">
+      <div class="bb-hdr"><span class="bb-icon">🏃</span><span class="bb-name">运动</span></div>
+      <div class="dur-val green" id="exerciseVal">0<span style="font-family:'Noto Sans SC';font-size:12px;color:var(--dim);margin-left:3px">分钟</span></div>
+      <div class="chip-row">
+        <span class="chip c-gr" onclick="addDur('exercise',15)">+15 min</span>
+        <span class="chip c-gr" onclick="addDur('exercise',30)">+30 min</span>
+        <span class="chip c-gr" onclick="addDur('exercise',45)">+45 min</span>
+      </div>
+      <div class="irow">
+        <input class="num-inp" type="number" id="exerciseCustom" placeholder="分钟" oninput="setDur('exercise')">
+      </div>
+      <textarea class="bb-note" id="exerciseNote" rows="2" placeholder="类型、感受…"></textarea>
+    </div>
+    <div class="bb">
+      <div class="bb-hdr"><span class="bb-icon">⚖️</span><span class="bb-name">体重</span></div>
+      <div class="wt-row"><div class="wt-val" id="weightVal">—</div><span class="wt-unit">kg</span></div>
+      <input class="wt-inp" type="number" id="weightInput" placeholder="输入体重 kg" step="0.1" oninput="setWeight()">
+    </div>
+  </div>
+</div>
+
+<!-- 饮食记录 -->
+<div class="sec">
+  <div class="sec-lbl">饮食记录</div>
+  <div class="card">
+    <div class="mb">
+      <div class="mb-hdr"><span class="mb-emoji">🌅</span><span class="mb-name">早餐</span></div>
+      <textarea class="mb-note" id="mealBreakfast" rows="2" placeholder="吃了什么…"></textarea>
+      <div class="mb-foot">
+        <span class="kcal-lbl">卡路里</span>
+        <input class="kcal-inp" type="number" id="kcalBreakfast" placeholder="—" min="0" oninput="updateCalTotal()">
+        <span class="kcal-unit">kcal</span>
+      </div>
+    </div>
+    <div class="mb">
+      <div class="mb-hdr"><span class="mb-emoji">☀️</span><span class="mb-name">午餐</span></div>
+      <textarea class="mb-note" id="mealLunch" rows="2" placeholder="吃了什么…"></textarea>
+      <div class="mb-foot">
+        <span class="kcal-lbl">卡路里</span>
+        <input class="kcal-inp" type="number" id="kcalLunch" placeholder="—" min="0" oninput="updateCalTotal()">
+        <span class="kcal-unit">kcal</span>
+      </div>
+    </div>
+    <div class="mb">
+      <div class="mb-hdr"><span class="mb-emoji">🌙</span><span class="mb-name">晚餐</span></div>
+      <textarea class="mb-note" id="mealDinner" rows="2" placeholder="吃了什么…"></textarea>
+      <div class="mb-foot">
+        <span class="kcal-lbl">卡路里</span>
+        <input class="kcal-inp" type="number" id="kcalDinner" placeholder="—" min="0" oninput="updateCalTotal()">
+        <span class="kcal-unit">kcal</span>
+      </div>
+    </div>
+    <div class="mb">
+      <div class="mb-hdr"><span class="mb-emoji">🍎</span><span class="mb-name">零食 / 其他</span></div>
+      <textarea class="mb-note" id="mealSnack" rows="2" placeholder="零食、饮料…"></textarea>
+      <div class="mb-foot">
+        <span class="kcal-lbl">卡路里</span>
+        <input class="kcal-inp" type="number" id="kcalSnack" placeholder="—" min="0" oninput="updateCalTotal()">
+        <span class="kcal-unit">kcal</span>
+      </div>
+    </div>
+    <div class="cal-total" id="calTotal" style="display:none">
+      <span class="ct-lbl">全天摄入</span>
+      <span><span class="ct-val" id="calTotalVal">0</span><span class="ct-unit">kcal</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- 今日观察 -->
+<div class="sec">
+  <div class="sec-lbl">今日观察</div>
+  <div class="gen-note">
+    <textarea id="noteText" rows="3" placeholder="精力规律、感受、明天想调整的…"></textarea>
+  </div>
+</div>
+
+<!-- 导出 -->
+<div class="sec" style="margin-bottom:8px">
+  <button class="export-btn" onclick="exportData()">📤 导出全部记录（发给Claude分析）</button>
+</div>
+
+<div id="toast"></div>
+<button class="save-fab" id="saveFab" onclick="saveDay()">记录今天</button>
+
+<script>
+var STORE = 'jlgl_v1';
+var WATER_TARGET = 2000;
+var R = 18, CIRC = 2 * Math.PI * R;
+var currentKey = todayKey();
+var db = {};
+try { db = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch(e) { db = {}; }
+
+function todayKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function pad(n) { return n < 10 ? '0'+n : ''+n; }
+function offsetKey(k, delta) {
+  var d = new Date(k + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function fmtShort(k) {
+  var d = new Date(k + 'T00:00:00');
+  return (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
+function wdChar(k) { return ['日','一','二','三','四','五','六'][new Date(k+'T00:00:00').getDay()]; }
+function saveDb() { try { localStorage.setItem(STORE, JSON.stringify(db)); } catch(e) {} }
+
+function emptyDay() {
+  return { points:[], water:0, waterNote:'', meditation:0, meditationNote:'',
+    exercise:0, exerciseNote:'', weight:null,
+    meals:{breakfast:'',lunch:'',dinner:'',snack:''},
+    calories:{breakfast:null,lunch:null,dinner:null,snack:null}, note:'' };
+}
+function getDay(k) {
+  if (!db[k]) return emptyDay();
+  var d = JSON.parse(JSON.stringify(db[k]));
+  if (!d.points) d.points = [];
+  if (!d.meals)  d.meals  = {breakfast:'',lunch:'',dinner:'',snack:''};
+  if (!d.calories) d.calories = {breakfast:null,lunch:null,dinner:null,snack:null};
+  return d;
+}
+
+function timeToMin(t) {
+  var m = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m) return parseInt(m[1])*60 + parseInt(m[2]);
+  if (t === '起床') return -1;
+  return 9999;
+}
+function scoreColor(v) {
+  if (v >= 8) return 'var(--red)';
+  if (v >= 5) return 'var(--green)';
+  return 'var(--blue)';
+}
+
+// ── Y AXIS
+function buildY() {
+  var el = document.getElementById('chartY');
+  el.innerHTML = '';
+  for (var v = 10; v >= 0; v -= 2) {
+    var d = document.createElement('div');
+    d.className = 'y-l'; d.textContent = v;
+    el.appendChild(d);
+  }
+}
+
+// ── DRAW CHART
+function drawChart() {
+  var svg = document.getElementById('chartSvg');
+  var xEl = document.getElementById('chartX');
+  var W = svg.parentElement.clientWidth || 300;
+  var H = svg.parentElement.clientHeight || 172;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = '';
+  xEl.innerHTML = '';
+
+  var data = getDay(currentKey);
+  var pts = data.points.slice().sort(function(a,b){ return timeToMin(a.time)-timeToMin(b.time); });
+
+  // defs
+  svg.innerHTML = '<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0%" stop-color="#C4522A" stop-opacity="0.2"/>'
+    + '<stop offset="100%" stop-color="#C4522A" stop-opacity="0.02"/>'
+    + '</linearGradient></defs>';
+
+  // zones
+  var zones = [{min:8,max:10,fill:'var(--zh)'},{min:5,max:8,fill:'var(--zm)'},{min:0,max:5,fill:'var(--zl)'}];
+  function yp(v) { return (1 - v/10) * H; }
+  zones.forEach(function(z) {
+    var r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',0); r.setAttribute('width',W);
+    r.setAttribute('y',yp(z.max)); r.setAttribute('height',yp(z.min)-yp(z.max));
+    r.setAttribute('fill',z.fill); svg.appendChild(r);
+  });
+
+  // grid
+  for (var v = 0; v <= 10; v += 2) {
+    var gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gl.setAttribute('x1',0); gl.setAttribute('x2',W);
+    gl.setAttribute('y1',yp(v)); gl.setAttribute('y2',yp(v));
+    gl.setAttribute('stroke','#E8E4DE'); gl.setAttribute('stroke-width','0.6');
+    if (v % 5 !== 0) gl.setAttribute('stroke-dasharray','3,3');
+    svg.appendChild(gl);
+  }
+
+  if (pts.length === 0) return;
+
+  var n = pts.length;
+  var xpts = pts.map(function(p, i) {
+    return { x: n===1 ? W/2 : (i/(n-1))*W, y: yp(p.score), v: p.score, t: p.time };
+  });
+
+  // baseline
+  var bline = document.createElementNS('http://www.w3.org/2000/svg','line');
+  bline.setAttribute('x1',0); bline.setAttribute('x2',W);
+  bline.setAttribute('y1',xpts[0].y); bline.setAttribute('y2',xpts[0].y);
+  bline.setAttribute('stroke','#B07A20'); bline.setAttribute('stroke-width','1.2');
+  bline.setAttribute('stroke-dasharray','5,3'); bline.setAttribute('opacity','0.6');
+  svg.appendChild(bline);
+
+  if (xpts.length >= 2) {
+    // area
+    var aD = 'M'+xpts[0].x+','+H+' L'+xpts[0].x+','+xpts[0].y+' ';
+    for (var k=1; k<xpts.length; k++) {
+      var mx=(xpts[k-1].x+xpts[k].x)/2;
+      aD += 'C'+mx+','+xpts[k-1].y+' '+mx+','+xpts[k].y+' '+xpts[k].x+','+xpts[k].y+' ';
+    }
+    aD += 'L'+xpts[xpts.length-1].x+','+H+' Z';
+    var area = document.createElementNS('http://www.w3.org/2000/svg','path');
+    area.setAttribute('d',aD); area.setAttribute('fill','url(#ag)');
+    svg.appendChild(area);
+    // line
+    var lD = 'M'+xpts[0].x+','+xpts[0].y+' ';
+    for (var k=1; k<xpts.length; k++) {
+      var mx=(xpts[k-1].x+xpts[k].x)/2;
+      lD += 'C'+mx+','+xpts[k-1].y+' '+mx+','+xpts[k].y+' '+xpts[k].x+','+xpts[k].y+' ';
+    }
+    var lpath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    lpath.setAttribute('d',lD); lpath.setAttribute('fill','none');
+    lpath.setAttribute('stroke','var(--red)'); lpath.setAttribute('stroke-width','2');
+    lpath.setAttribute('stroke-linecap','round');
+    svg.appendChild(lpath);
+  }
+
+  // dots
+  xpts.forEach(function(p) {
+    var c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','4');
+    c.setAttribute('fill','white'); c.setAttribute('stroke',scoreColor(p.v)); c.setAttribute('stroke-width','2');
+    svg.appendChild(c);
+  });
+
+  // x labels
+  var iw = Math.max(36, W/Math.max(n,1));
+  pts.forEach(function(p) {
+    var d = document.createElement('div');
+    d.className = 'x-lbl'; d.style.minWidth = iw+'px'; d.textContent = p.time;
+    xEl.appendChild(d);
+  });
+}
+
+// ── ENTRY ROWS
+function buildEntryRows() {
+  var container = document.getElementById('entryRows');
+  container.innerHTML = '';
+  var data = getDay(currentKey);
+  var pts = data.points.slice().sort(function(a,b){ return timeToMin(a.time)-timeToMin(b.time); });
+  pts.forEach(function(p, idx) {
+    var sc = p.score;
+    var scClass = sc>=8?'sc-hi':sc>=5?'sc-mid':'sc-lo';
+    var row = document.createElement('div');
+    row.className = 'erow'; row.id = 'erow_'+idx;
+    row.innerHTML =
+      '<input class="time-inp" type="text" id="et_'+idx+'" value="'+p.time+'" placeholder="时间" maxlength="5" onchange="updatePointTime('+idx+',this.value)">'
+      +'<div class="score-wrap">'
+      +'<button class="sc-btn" onclick="adjScore('+idx+',-1)">−</button>'
+      +'<div class="sc-badge '+scClass+'" id="es_'+idx+'">'+sc+'</div>'
+      +'<button class="sc-btn" onclick="adjScore('+idx+',1)">+</button>'
+      +'</div>'
+      +'<button class="del-btn" onclick="delPoint('+idx+')">✕</button>';
+    container.appendChild(row);
+  });
+}
+
+function addPoint() {
+  var d = getDay(currentKey);
+  d.points.push({time:'', score:5});
+  db[currentKey] = d; saveDb();
+  buildEntryRows(); drawChart(); updateInsight(); updateWeekStrip();
+  var inputs = document.querySelectorAll('.time-inp');
+  if (inputs.length) inputs[inputs.length-1].focus();
+}
+
+function updatePointTime(idx, val) {
+  var d = getDay(currentKey);
+  var pts = d.points.slice().sort(function(a,b){ return timeToMin(a.time)-timeToMin(b.time); });
+  if (pts[idx]) pts[idx].time = val.trim();
+  d.points = pts; db[currentKey]=d; saveDb();
+  drawChart(); updateInsight();
+}
+
+function adjScore(idx, delta) {
+  var d = getDay(currentKey);
+  var pts = d.points.slice().sort(function(a,b){ return timeToMin(a.time)-timeToMin(b.time); });
+  if (!pts[idx]) return;
+  var next = Math.min(10, Math.max(0, (pts[idx].score||5) + delta));
+  pts[idx].score = next;
+  d.points = pts; db[currentKey]=d; saveDb();
+  var badge = document.getElementById('es_'+idx);
+  if (badge) {
+    badge.textContent = next;
+    badge.className = 'sc-badge ' + (next>=8?'sc-hi':next>=5?'sc-mid':'sc-lo');
+  }
+  drawChart(); updateInsight(); updateWeekStrip();
+}
+
+function delPoint(idx) {
+  var d = getDay(currentKey);
+  var pts = d.points.slice().sort(function(a,b){ return timeToMin(a.time)-timeToMin(b.time); });
+  pts.splice(idx,1);
+  d.points = pts; db[currentKey]=d; saveDb();
+  buildEntryRows(); drawChart(); updateInsight(); updateWeekStrip();
+}
+
+// ── INSIGHT
+function updateInsight() {
+  var d = getDay(currentKey);
+  var box = document.getElementById('insight');
+  if (!d.points || d.points.length < 2) { box.classList.remove('show'); return; }
+  var scores = d.points.map(function(p){ return p.score; });
+  var avg = scores.reduce(function(a,b){return a+b;},0) / scores.length;
+  var peak = Math.max.apply(null,scores);
+  var low  = Math.min.apply(null,scores);
+  var peakTime = '';
+  d.points.forEach(function(p){ if(p.score===peak) peakTime=p.time; });
+  var msg = '';
+  if (avg>=7.5) msg='今日精力充沛 <strong>'+avg.toFixed(1)+'</strong> 分，峰值在<strong>'+peakTime+'</strong>，保持！';
+  else if (avg>=5) msg='今日精力稳定 <strong>'+avg.toFixed(1)+'</strong> 分，峰值<strong>'+peakTime+'</strong>，低谷 '+low+' 分。';
+  else msg='今日精力偏低 <strong>'+avg.toFixed(1)+'</strong> 分，关注睡眠和身体输入。';
+  if ((d.water||0) < 1000) msg += ' 💧 今天喝水不足。';
+  box.innerHTML = msg; box.classList.add('show');
+}
+
+// ── WATER
+function addWater(ml) {
+  var d = getDay(currentKey); d.water = Math.min(9999,(d.water||0)+ml);
+  db[currentKey]=d; saveDb(); renderWater();
+}
+function addCustomWater() {
+  var inp = document.getElementById('waterCustom');
+  var v = parseInt(inp.value); if(!isNaN(v)&&v>0){addWater(v);inp.value='';}
+}
+function resetWater() {
+  var d=getDay(currentKey); d.water=0; db[currentKey]=d; saveDb(); renderWater();
+}
+function renderWater() {
+  var d=getDay(currentKey); var w=d.water||0;
+  document.getElementById('waterVal').textContent=w;
+  document.getElementById('waterBar').style.width=Math.min(w/WATER_TARGET*100,100)+'%';
+}
+
+// ── DUR
+function addDur(key, delta) {
+  var d=getDay(currentKey); d[key]=Math.max(0,(d[key]||0)+delta);
+  db[currentKey]=d; saveDb(); renderDur(key,d[key]);
+}
+function setDur(key) {
+  var v=parseInt(document.getElementById(key+'Custom').value);
+  if(isNaN(v)||v<0)return;
+  var d=getDay(currentKey); d[key]=v; db[currentKey]=d; saveDb(); renderDur(key,v);
+}
+function renderDur(key,v) {
+  var el=document.getElementById(key+'Val');
+  var cls=key==='meditation'?'gold':'green';
+  el.innerHTML=v+'<span style="font-family:\'Noto Sans SC\';font-size:12px;color:var(--dim);margin-left:3px">分钟</span>';
+  el.className='dur-val '+cls;
+}
+
+// ── WEIGHT
+function setWeight() {
+  var v=parseFloat(document.getElementById('weightInput').value);
+  var d=getDay(currentKey); d.weight=isNaN(v)?null:v;
+  db[currentKey]=d; saveDb();
+  document.getElementById('weightVal').textContent=isNaN(v)?'—':v;
+}
+
+// ── CALORIES
+function updateCalTotal() {
+  var ids=['kcalBreakfast','kcalLunch','kcalDinner','kcalSnack'];
+  var total=0;
+  ids.forEach(function(id){ total+=parseFloat(document.getElementById(id).value)||0; });
+  var bar=document.getElementById('calTotal');
+  if(total>0){ document.getElementById('calTotalVal').textContent=total; bar.style.display='flex'; }
+  else { bar.style.display='none'; }
+}
+
+// ── WEEK STRIP
+function updateWeekStrip() {
+  var strip=document.getElementById('weekStrip');
+  strip.innerHTML='';
+  var today=todayKey();
+  for(var i=6;i>=0;i--) {
+    var k=offsetKey(today,-i);
+    var data=db[k];
+    var avg=null;
+    if(data && data.points && data.points.length) {
+      avg=(data.points.reduce(function(a,b){return a+b.score;},0)/data.points.length).toFixed(1);
+    }
+    var div=document.createElement('div');
+    div.className='week-day'+(k===today?' today':'')+(k===currentKey?' active':'')+(data&&k!==currentKey?' has-data':'');
+    (function(key){div.onclick=function(){currentKey=key;renderAll();};})(k);
+    div.innerHTML='<div class="week-dot">'+(avg||new Date(k+'T00:00:00').getDate())+'</div><div class="week-wd">周'+wdChar(k)+'</div>';
+    strip.appendChild(div);
+  }
+}
+
+// ── SAVE
+function saveDay() {
+  var d=getDay(currentKey);
+  d.waterNote=document.getElementById('waterNote').value;
+  d.meditationNote=document.getElementById('meditationNote').value;
+  d.exerciseNote=document.getElementById('exerciseNote').value;
+  d.meals={
+    breakfast:document.getElementById('mealBreakfast').value,
+    lunch:document.getElementById('mealLunch').value,
+    dinner:document.getElementById('mealDinner').value,
+    snack:document.getElementById('mealSnack').value
+  };
+  d.calories={
+    breakfast:parseFloat(document.getElementById('kcalBreakfast').value)||null,
+    lunch:parseFloat(document.getElementById('kcalLunch').value)||null,
+    dinner:parseFloat(document.getElementById('kcalDinner').value)||null,
+    snack:parseFloat(document.getElementById('kcalSnack').value)||null
+  };
+  d.note=document.getElementById('noteText').value;
+  db[currentKey]=d; saveDb();
+  var btn=document.getElementById('saveFab');
+  btn.textContent='✓ 已保存'; btn.classList.add('saved');
+  setTimeout(function(){btn.textContent='记录今天';btn.classList.remove('saved');},1800);
+  updateWeekStrip();
+}
+
+// ── RENDER ALL
+function renderAll() {
+  document.getElementById('datePill').textContent=fmtShort(currentKey);
+  buildEntryRows();
+  setTimeout(drawChart,60);
+  updateInsight();
+  var d=getDay(currentKey);
+  document.getElementById('waterVal').textContent=d.water||0;
+  document.getElementById('waterBar').style.width=Math.min((d.water||0)/WATER_TARGET*100,100)+'%';
+  document.getElementById('waterNote').value=d.waterNote||'';
+  renderDur('meditation',d.meditation||0);
+  document.getElementById('meditationCustom').value=d.meditation||'';
+  document.getElementById('meditationNote').value=d.meditationNote||'';
+  renderDur('exercise',d.exercise||0);
+  document.getElementById('exerciseCustom').value=d.exercise||'';
+  document.getElementById('exerciseNote').value=d.exerciseNote||'';
+  document.getElementById('weightVal').textContent=d.weight!=null?d.weight:'—';
+  document.getElementById('weightInput').value=d.weight!=null?d.weight:'';
+  document.getElementById('mealBreakfast').value=d.meals?d.meals.breakfast||'':'';
+  document.getElementById('mealLunch').value=d.meals?d.meals.lunch||'':'';
+  document.getElementById('mealDinner').value=d.meals?d.meals.dinner||'':'';
+  document.getElementById('mealSnack').value=d.meals?d.meals.snack||'':'';
+  document.getElementById('kcalBreakfast').value=d.calories&&d.calories.breakfast?d.calories.breakfast:'';
+  document.getElementById('kcalLunch').value=d.calories&&d.calories.lunch?d.calories.lunch:'';
+  document.getElementById('kcalDinner').value=d.calories&&d.calories.dinner?d.calories.dinner:'';
+  document.getElementById('kcalSnack').value=d.calories&&d.calories.snack?d.calories.snack:'';
+  document.getElementById('noteText').value=d.note||'';
+  updateCalTotal();
+  updateWeekStrip();
+}
+
+function changeDay(delta) { currentKey=offsetKey(currentKey,delta); renderAll(); }
+
+// ── EXPORT
+function exportData() {
+  var days=Object.keys(db).sort();
+  if(days.length===0){ showToast('还没有任何记录'); return; }
+  var lines=['【精力管理记录】','导出时间：'+(new Date().toLocaleDateString('zh-CN')),''];
+  days.forEach(function(k){
+    var d=db[k];
+    var dt=new Date(k+'T00:00:00');
+    lines.push('── '+(dt.getMonth()+1)+'月'+dt.getDate()+'日 周'+wdChar(k)+' ──');
+    if(d.points&&d.points.length){
+      var sorted=d.points.slice().sort(function(a,b){return timeToMin(a.time)-timeToMin(b.time);});
+      var sc=sorted.map(function(p){return p.time+':'+p.score;}).join(' / ');
+      var avg=(sorted.reduce(function(a,b){return a+b.score;},0)/sorted.length).toFixed(1);
+      lines.push('精力：'+sc+'（均值'+avg+'）');
+    }
+    if(d.water)      lines.push('喝水：'+d.water+'ml'+(d.waterNote?' · '+d.waterNote:''));
+    if(d.meditation) lines.push('冥想：'+d.meditation+'分钟'+(d.meditationNote?' · '+d.meditationNote:''));
+    if(d.exercise)   lines.push('运动：'+d.exercise+'分钟'+(d.exerciseNote?' · '+d.exerciseNote:''));
+    if(d.weight)     lines.push('体重：'+d.weight+'kg');
+    var m=d.meals||{}, c=d.calories||{};
+    if(m.breakfast) lines.push('早餐：'+m.breakfast+(c.breakfast?' ('+c.breakfast+'kcal)':''));
+    if(m.lunch)     lines.push('午餐：'+m.lunch+(c.lunch?' ('+c.lunch+'kcal)':''));
+    if(m.dinner)    lines.push('晚餐：'+m.dinner+(c.dinner?' ('+c.dinner+'kcal)':''));
+    if(m.snack)     lines.push('零食：'+m.snack+(c.snack?' ('+c.snack+'kcal)':''));
+    var tc=[c.breakfast,c.lunch,c.dinner,c.snack].filter(Boolean).reduce(function(a,b){return a+b;},0);
+    if(tc>0) lines.push('总摄入：'+tc+'kcal');
+    if(d.note) lines.push('观察：'+d.note);
+    lines.push('');
+  });
+  var text=lines.join('\n');
+  if(navigator.share){
+    navigator.share({title:'精力记录',text:text}).catch(function(){copyText(text);});
+  } else { copyText(text); }
+}
+function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){showToast('已复制！粘贴给Claude即可分析 ✓');}).catch(function(){fbCopy(text);});
+  } else { fbCopy(text); }
+}
+function fbCopy(text){
+  var ta=document.createElement('textarea');
+  ta.value=text; ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand('copy'); showToast('已复制 ✓'); }
+  catch(e){ showToast('请手动复制'); alert(text); }
+  document.body.removeChild(ta);
+}
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.style.opacity='1';
+  setTimeout(function(){t.style.opacity='0';},2800);
+}
+
+window.addEventListener('load', function(){ buildY(); renderAll(); });
+window.addEventListener('resize', drawChart);
+</script>
+</body>
+</html>
